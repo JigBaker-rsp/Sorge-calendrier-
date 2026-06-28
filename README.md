@@ -1,14 +1,20 @@
 # Calendrier de Sorge
 
-Application familiale ultra simple en HTML/JavaScript + Supabase.
+Application familiale simple en HTML/JavaScript + Supabase, pensée pour :
 
-## Fonctionnalités
+- une **vue planning très lisible** pour Jean-Luc ;
+- une **saisie rapide** pour les enfants et petits-enfants ;
+- un déploiement direct sur **GitHub Pages**.
 
-- Vue mensuelle lisible avec très gros boutons.
-- Ajout d'une présence sur un jour ou une période.
-- Modification et suppression par tout le monde.
-- Synchronisation Supabase.
-- Compatible GitHub Pages : aucun build, aucun backend à coder.
+## Nouveautés UX
+
+- Deux onglets :
+  - **Planning** : vue mensuelle compacte, en carrés/semaine, avec des barres horizontales qui traversent les jours où chaque personne est présente.
+  - **Saisie & modifications** : formulaire compact + liste des présences du mois.
+- Boutons moins gros.
+- Moins de scroll vertical.
+- La vue principale donne la vision d’ensemble du mois.
+- Cliquer sur une barre dans le planning ouvre directement la modification de la présence.
 
 ## Installation Supabase
 
@@ -37,7 +43,7 @@ const SUPABASE_PUBLISHABLE_KEY = "TON_ANON_OU_PUBLISHABLE_KEY";
 
 ## Sécurité
 
-Cette version est volontairement sans compte utilisateur pour être simple.
+Cette version est volontairement sans compte utilisateur pour rester très simple.
 Conséquence : toute personne qui a le lien peut lire, ajouter, modifier et supprimer les présences.
 
-Pour une version plus protégée, ajoute une authentification Supabase ou un petit code PIN familial côté application + règle côté serveur.
+Pour une version plus protégée, il faudra ajouter une authentification Supabase ou une règle côté serveur.
