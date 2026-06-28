@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calendrier de Sorge</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg: #f7f5ef;
+      --panel: #ffffff;
+      --panel-2: #fffaf0;
+      --text: #1f2933;
+      --muted: #5f6b7a;
+      --border: #d8d1c4;
+      --accent: #205c4f;
+      --accent-2: #f4b860;
+      --danger: #b42318;
+      --danger-bg: #fff0ee;
+      --shadow: 0 18px 45px rgba(31, 41, 51, 0.12);
+      --radius: 24px;
+      --cell-min: 128px;
+      --font: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at top left, rgba(244, 184, 96, 0.25), transparent 28rem),
+        linear-gradient(135deg, #f9f7f1 0%, var(--bg) 100%);
+      color: var(--text);
+      font-size: 20px;
+      line-height: 1.45;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      cursor: pointer;
+      min-height: 52px;
+      border-radius: 16px;
+      padding: 12px 18px;
+      font-weight: 800;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.08s ease;
+    }
+
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .app {
+      width: min(1500px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: 22px 0 36px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(2rem, 4vw, 4rem);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.35rem);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 10px 20px rgba(32, 92, 79, 0.22);
+    }
+
+    .secondary {
+      background: #ebe7dc;
+      color: var(--text);
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid rgba(32, 92, 79, 0.25);
+    }
+
+    .danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 2px solid rgba(180, 35, 24, 0.18);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin: 20px 0;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .month-title {
+      font-size: clamp(1.6rem, 3vw, 2.5rem);
+      font-weight: 900;
+      text-transform: capitalize;
+      min-width: min(100%, 340px);
+      text-align: center;
+    }
+
+    .toolbar-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .calendar-card, .side-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: #efeadd;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .weekday {
+      padding: 14px 10px;
+      text-align: center;
+      font-weight: 900;
+      color: #3f4955;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+
+    .day {
+      min-height: var(--cell-min);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      background: #fffdf8;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .day:nth-child(7n) { border-right: 0; }
+    .day.outside { background: #f1eee6; color: #75808c; }
+    .day.today { outline: 4px solid rgba(244, 184, 96, 0.7); outline-offset: -4px; }
+    .day.has-event { background: #fff9e7; }
+
+    .day-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 6px;
+    }
+
+    .day-number {
+      font-size: 1.35rem;
+      font-weight: 950;
+    }
+
+    .today-label {
+      font-size: 0.75rem;
+      font-weight: 950;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent-2);
+      color: #3c2a05;
+      white-space: nowrap;
+    }
+
+    .add-day {
+      margin-top: auto;
+      width: 100%;
+      min-height: 40px;
+      padding: 7px 10px;
+      border-radius: 12px;
+      background: rgba(32, 92, 79, 0.08);
+      color: var(--accent);
+      font-size: 0.9rem;
+    }
+
+    .event-pill {
+      display: block;
+      width: 100%;
+      text-align: left;
+      min-height: 0;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: var(--event-color, #205c4f);
+      color: white;
+      font-size: 0.94rem;
+      font-weight: 900;
+      line-height: 1.15;
+      box-shadow: none;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .event-pill small {
+      display: block;
+      opacity: 0.88;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .side-card {
+      padding: 18px;
+      position: sticky;
+      top: 12px;
+    }
+
+    .side-card h2 {
+      margin: 0 0 12px;
+      font-size: 1.65rem;
+    }
+
+    .status {
+      min-height: 30px;
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stay-card {
+      border: 1px solid var(--border);
+      border-left: 12px solid var(--event-color, var(--accent));
+      border-radius: 18px;
+      padding: 14px;
+      background: var(--panel-2);
+    }
+
+    .stay-card h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .stay-card p {
+      margin: 6px 0 12px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .stay-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .stay-actions button {
+      min-height: 44px;
+      padding: 8px 12px;
+      font-size: 0.95rem;
+    }
+
+    .empty {
+      border: 2px dashed var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      color: var(--muted);
+      background: #fffdf8;
+    }
+
+    dialog {
+      width: min(680px, calc(100% - 24px));
+      border: 0;
+      border-radius: 26px;
+      padding: 0;
+      box-shadow: 0 26px 100px rgba(0, 0, 0, 0.35);
+    }
+
+    dialog::backdrop {
+      background: rgba(14, 21, 31, 0.55);
+      backdrop-filter: blur(3px);
+    }
+
+    .modal {
+      padding: 22px;
+      background: var(--panel);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .modal h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+    }
+
+    .close-btn {
+      min-width: 54px;
+      padding: 8px 14px;
+      background: #ece7dd;
+      color: var(--text);
+      font-size: 1.2rem;
+    }
+
+    form {
+      display: grid;
+      gap: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      font-weight: 900;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.94rem;
+      font-weight: 650;
+    }
+
+    input, textarea {
+      width: 100%;
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 13px 14px;
+      background: #fffdf8;
+      color: var(--text);
+      min-height: 54px;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    input:focus, textarea:focus, button:focus-visible {
+      outline: 4px solid rgba(244, 184, 96, 0.7);
+      outline-offset: 2px;
+    }
+
+    input[type="color"] {
+      height: 62px;
+      padding: 6px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      margin-top: 4px;
+    }
+
+    .modal-actions-right {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: min(620px, calc(100% - 24px));
+      padding: 14px 18px;
+      border-radius: 18px;
+      background: #1f2933;
+      color: white;
+      box-shadow: var(--shadow);
+      font-weight: 800;
+      display: none;
+      z-index: 20;
+    }
+
+    .toast.show { display: block; }
+
+    .config-warning {
+      margin: 20px 0 0;
+      padding: 18px;
+      border-radius: 20px;
+      background: #fff3cd;
+      color: #533f03;
+      border: 1px solid #f6d680;
+      font-weight: 800;
+    }
+
+    @media (max-width: 1050px) {
+      .layout { grid-template-columns: 1fr; }
+      .side-card { position: static; }
+      :root { --cell-min: 112px; }
+    }
+
+    @media (max-width: 760px) {
+      body { font-size: 18px; }
+      .hero { grid-template-columns: 1fr; }
+      .toolbar { justify-content: center; }
+      .toolbar-group { width: 100%; }
+      .toolbar-group button { flex: 1; }
+      .month-title { order: -1; width: 100%; }
+      .weekdays { display: none; }
+      .grid { grid-template-columns: 1fr; gap: 10px; padding: 10px; background: #efeadd; }
+      .day { min-height: auto; border: 1px solid var(--border); border-radius: 18px; }
+      .day.outside { display: none; }
+      .form-row { grid-template-columns: 1fr; }
+      .modal-actions, .modal-actions-right { flex-direction: column; }
+      .modal-actions button, .modal-actions-right button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero" aria-label="Introduction">
+      <div>
+        <h1>Calendrier de Sorge</h1>
+        <p class="subtitle">Les jours où les enfants et petits-enfants sont à Sorge, visibles simplement pour Jean‑Luc.</p>
+      </div>
+      <button id="addStayTop" class="primary">+ Ajouter un séjour</button>
+    </section>
+
+    <div id="configWarning" class="config-warning" hidden>
+      Configuration Supabase manquante : remplace SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY dans le fichier index.html.
+    </div>
+
+    <section class="toolbar" aria-label="Navigation du calendrier">
+      <div class="toolbar-group">
+        <button id="prevMonth" class="secondary">← Mois précédent</button>
+        <button id="todayBtn" class="ghost">Aujourd’hui</button>
+      </div>
+      <div id="monthTitle" class="month-title" aria-live="polite"></div>
+      <div class="toolbar-group">
+        <button id="nextMonth" class="secondary">Mois suivant →</button>
+        <button id="refreshBtn" class="ghost">Rafraîchir</button>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div class="calendar-card">
+        <div class="weekdays" aria-hidden="true">
+          <div class="weekday">Lun.</div>
+          <div class="weekday">Mar.</div>
+          <div class="weekday">Mer.</div>
+          <div class="weekday">Jeu.</div>
+          <div class="weekday">Ven.</div>
+          <div class="weekday">Sam.</div>
+          <div class="weekday">Dim.</div>
+        </div>
+        <div id="calendarGrid" class="grid" aria-label="Calendrier mensuel"></div>
+      </div>
+
+      <aside class="side-card" aria-label="Liste des présences du mois">
+        <h2>Présences du mois</h2>
+        <p id="status" class="status">Chargement…</p>
+        <div id="stayList" class="list"></div>
+      </aside>
+    </section>
+  </main>
+
+  <dialog id="stayDialog">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h2 id="dialogTitle">Ajouter un séjour</h2>
+          <div class="hint">Une ligne peut couvrir un jour ou plusieurs jours.</div>
+        </div>
+        <button id="closeDialog" class="close-btn" type="button" aria-label="Fermer">×</button>
+      </div>
+
+      <form id="stayForm">
+        <input id="stayId" type="hidden" />
+
+        <label>
+          Qui vient à Sorge ?
+          <input id="personName" name="personName" type="text" autocomplete="name" placeholder="Ex. Alice, Paul, famille de Marie…" required maxlength="80" />
+        </label>
+
+        <div class="form-row">
+          <label>
+            Date d’arrivée
+            <input id="startDate" name="startDate" type="date" required />
+          </label>
+          <label>
+            Date de départ / dernier jour
+            <input id="endDate" name="endDate" type="date" required />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Couleur
+            <input id="stayColor" name="stayColor" type="color" value="#205c4f" />
+          </label>
+          <label>
+            Téléphone ou info utile <span class="hint">facultatif</span>
+            <input id="note" name="note" type="text" placeholder="Ex. arrive le soir, avec bébé…" maxlength="180" />
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="deleteBtn" class="danger" type="button" hidden>Supprimer</button>
+          <div class="modal-actions-right">
+            <button class="secondary" type="button" id="cancelBtn">Annuler</button>
+            <button class="primary" type="submit">Enregistrer</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    // 1) Remplace ces 2 valeurs par celles de ton projet Supabase.
+    // Supabase > Project Settings > Data API : URL + public/anon/publishable key.
+    const SUPABASE_URL = "https://TON-PROJET.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "TON_ANON_OU_PUBLISHABLE_KEY";
+
+    const TABLE_NAME = "sorge_presences";
+
+    const state = {
+      currentMonth: startOfMonth(new Date()),
+      stays: [],
+      loading: false,
+      realtimeChannel: null,
+      db: null
+    };
+
+    const els = {
+      monthTitle: document.getElementById("monthTitle"),
+      grid: document.getElementById("calendarGrid"),
+      list: document.getElementById("stayList"),
+      status: document.getElementById("status"),
+      toast: document.getElementById("toast"),
+      configWarning: document.getElementById("configWarning"),
+      dialog: document.getElementById("stayDialog"),
+      dialogTitle: document.getElementById("dialogTitle"),
+      form: document.getElementById("stayForm"),
+      stayId: document.getElementById("stayId"),
+      personName: document.getElementById("personName"),
+      startDate: document.getElementById("startDate"),
+      endDate: document.getElementById("endDate"),
+      stayColor: document.getElementById("stayColor"),
+      note: document.getElementById("note"),
+      deleteBtn: document.getElementById("deleteBtn")
+    };
+
+    document.getElementById("prevMonth").addEventListener("click", () => changeMonth(-1));
+    document.getElementById("nextMonth").addEventListener("click", () => changeMonth(1));
+    document.getElementById("todayBtn").addEventListener("click", () => {
+      state.currentMonth = startOfMonth(new Date());
+      render();
+    });
+    document.getElementById("refreshBtn").addEventListener("click", loadStays);
+    document.getElementById("addStayTop").addEventListener("click", () => openCreateDialog(toISODate(new Date())));
+    document.getElementById("closeDialog").addEventListener("click", closeDialog);
+    document.getElementById("cancelBtn").addEventListener("click", closeDialog);
+    els.deleteBtn.addEventListener("click", deleteCurrentStay);
+    els.form.addEventListener("submit", saveStay);
+
+    init();
+
+    function init() {
+      render();
+
+      const looksConfigured = !SUPABASE_URL.includes("TON-PROJET") && !SUPABASE_PUBLISHABLE_KEY.includes("TON_");
+      if (!looksConfigured) {
+        els.configWarning.hidden = false;
+        setStatus("Mode aperçu : configure Supabase pour sauvegarder les données.");
+        return;
+      }
+
+      state.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+      loadStays();
+      subscribeRealtime();
+    }
+
+    async function loadStays() {
+      if (!state.db) return;
+      state.loading = true;
+      setStatus("Chargement des présences…");
+
+      const monthStart = startOfMonth(state.currentMonth);
+      const monthEnd = endOfMonth(state.currentMonth);
+
+      const { data, error } = await state.db
+        .from(TABLE_NAME)
+        .select("id, person_name, start_date, end_date, note, color, updated_at")
+        .lte("start_date", toISODate(monthEnd))
+        .gte("end_date", toISODate(monthStart))
+        .order("start_date", { ascending: true })
+        .order("person_name", { ascending: true });
+
+      state.loading = false;
+
+      if (error) {
+        console.error(error);
+        setStatus("Impossible de charger. Vérifie Supabase et les droits RLS.");
+        toast("Erreur de chargement Supabase.");
+        return;
+      }
+
+      state.stays = data || [];
+      render();
+      setStatus(state.stays.length ? `${state.stays.length} présence(s) ce mois-ci.` : "Aucune présence ce mois-ci.");
+    }
+
+    function subscribeRealtime() {
+      if (!state.db) return;
+      state.realtimeChannel = state.db
+        .channel("sorge-presences-live")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: TABLE_NAME },
+          () => loadStays()
+        )
+        .subscribe();
+    }
+
+    async function saveStay(event) {
+      event.preventDefault();
+      if (!state.db) {
+        toast("Configure Supabase avant d’enregistrer.");
+        return;
+      }
+
+      const id = els.stayId.value.trim();
+      const payload = {
+        person_name: els.personName.value.trim(),
+        start_date: els.startDate.value,
+        end_date: els.endDate.value,
+        note: els.note.value.trim() || null,
+        color: els.stayColor.value || "#205c4f"
+      };
+
+      if (!payload.person_name) {
+        toast("Indique qui vient à Sorge.");
+        els.personName.focus();
+        return;
+      }
+
+      if (!payload.start_date || !payload.end_date || payload.end_date < payload.start_date) {
+        toast("La date de départ doit être après la date d’arrivée.");
+        els.endDate.focus();
+        return;
+      }
+
+      setStatus("Enregistrement…");
+      const query = id
+        ? state.db.from(TABLE_NAME).update(payload).eq("id", id).select().single()
+        : state.db.from(TABLE_NAME).insert(payload).select().single();
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error(error);
+        setStatus("Erreur pendant l’enregistrement.");
+        toast("Impossible d’enregistrer. Vérifie les politiques Supabase.");
+        return;
+      }
+
+      closeDialog();
+      toast(id ? "Séjour modifié." : "Séjour ajouté.");
+      await loadStays();
+
+      if (data?.start_date) {
+        state.currentMonth = startOfMonth(parseLocalDate(data.start_date));
+        render();
+      }
+    }
+
+    async function deleteCurrentStay() {
+      const id = els.stayId.value.trim();
+      const name = els.personName.value.trim() || "ce séjour";
+      if (!id || !state.db) return;
+      if (!confirm(`Supprimer ${name} du calendrier ?`)) return;
+
+      setStatus("Suppression…");
+      const { error } = await state.db.from(TABLE_NAME).delete().eq("id", id);
+
+      if (error) {
+        console.error(error);
+        setStatus("Erreur pendant la suppression.");
+        toast("Impossible de supprimer.");
+        return;
+      }
+
+      closeDialog();
+      toast("Séjour supprimé.");
+      await loadStays();
+    }
+
+    function render() {
+      renderHeader();
+      renderCalendar();
+      renderList();
+    }
+
+    function renderHeader() {
+      els.monthTitle.textContent = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" })
+        .format(state.currentMonth);
+    }
+
+    function renderCalendar() {
+      els.grid.innerHTML = "";
+      const cells = getCalendarCells(state.currentMonth);
+      const todayIso = toISODate(new Date());
+      const currentMonthNumber = state.currentMonth.getMonth();
+
+      for (const dayDate of cells) {
+        const iso = toISODate(dayDate);
+        const activeStays = staysForDate(iso);
+        const day = document.createElement("article");
+        day.className = [
+          "day",
+          dayDate.getMonth() !== currentMonthNumber ? "outside" : "",
+          iso === todayIso ? "today" : "",
+          activeStays.length ? "has-event" : ""
+        ].filter(Boolean).join(" ");
+        day.setAttribute("aria-label", formatFullDate(dayDate));
+
+        const top = document.createElement("div");
+        top.className = "day-top";
+
+        const number = document.createElement("div");
+        number.className = "day-number";
+        number.textContent = String(dayDate.getDate());
+        top.appendChild(number);
+
+        if (iso === todayIso) {
+          const today = document.createElement("span");
+          today.className = "today-label";
+          today.textContent = "Aujourd’hui";
+          top.appendChild(today);
+        }
+
+        day.appendChild(top);
+
+        for (const stay of activeStays.slice(0, 4)) {
+          const btn = document.createElement("button");
+          btn.className = "event-pill";
+          btn.type = "button";
+          btn.style.setProperty("--event-color", stay.color || "#205c4f");
+          btn.addEventListener("click", () => openEditDialog(stay));
+
+          const name = document.createElement("span");
+          name.textContent = stay.person_name;
+          btn.appendChild(name);
+
+          if (stay.note) {
+            const small = document.createElement("small");
+            small.textContent = stay.note;
+            btn.appendChild(small);
+          }
+
+          day.appendChild(btn);
+        }
+
+        if (activeStays.length > 4) {
+          const more = document.createElement("div");
+          more.className = "hint";
+          more.textContent = `+ ${activeStays.length - 4} autre(s)`;
+          day.appendChild(more);
+        }
+
+        const add = document.createElement("button");
+        add.className = "add-day";
+        add.type = "button";
+        add.textContent = "+ Ajouter ce jour";
+        add.addEventListener("click", () => openCreateDialog(iso));
+        day.appendChild(add);
+
+        els.grid.appendChild(day);
+      }
+    }
+
+    function renderList() {
+      els.list.innerHTML = "";
+
+      if (!state.stays.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Personne n’est encore indiqué pour ce mois. Clique sur “Ajouter un séjour”.";
+        els.list.appendChild(empty);
+        return;
+      }
+
+      for (const stay of state.stays) {
+        const card = document.createElement("article");
+        card.className = "stay-card";
+        card.style.setProperty("--event-color", stay.color || "#205c4f");
+
+        const title = document.createElement("h3");
+        title.textContent = stay.person_name;
+        card.appendChild(title);
+
+        const dates = document.createElement("p");
+        dates.textContent = formatDateRange(stay.start_date, stay.end_date) + (stay.note ? ` — ${stay.note}` : "");
+        card.appendChild(dates);
+
+        const actions = document.createElement("div");
+        actions.className = "stay-actions";
+
+        const edit = document.createElement("button");
+        edit.className = "secondary";
+        edit.type = "button";
+        edit.textContent = "Modifier";
+        edit.addEventListener("click", () => openEditDialog(stay));
+        actions.appendChild(edit);
+
+        const goMonth = document.createElement("button");
+        goMonth.className = "ghost";
+        goMonth.type = "button";
+        goMonth.textContent = "Voir";
+        goMonth.addEventListener("click", () => {
+          state.currentMonth = startOfMonth(parseLocalDate(stay.start_date));
+          render();
+        });
+        actions.appendChild(goMonth);
+
+        card.appendChild(actions);
+        els.list.appendChild(card);
+      }
+    }
+
+    function openCreateDialog(dateIso) {
+      els.dialogTitle.textContent = "Ajouter un séjour";
+      els.form.reset();
+      els.stayId.value = "";
+      els.startDate.value = dateIso;
+      els.endDate.value = dateIso;
+      els.stayColor.value = pickNextColor();
+      els.deleteBtn.hidden = true;
+      showDialog();
+      setTimeout(() => els.personName.focus(), 50);
+    }
+
+    function openEditDialog(stay) {
+      els.dialogTitle.textContent = "Modifier un séjour";
+      els.stayId.value = stay.id;
+      els.personName.value = stay.person_name || "";
+      els.startDate.value = stay.start_date;
+      els.endDate.value = stay.end_date;
+      els.note.value = stay.note || "";
+      els.stayColor.value = stay.color || "#205c4f";
+      els.deleteBtn.hidden = false;
+      showDialog();
+      setTimeout(() => els.personName.focus(), 50);
+    }
+
+    function showDialog() {
+      if (typeof els.dialog.showModal === "function") {
+        els.dialog.showModal();
+      } else {
+        alert("Ton navigateur ne supporte pas les fenêtres modales HTML. Mets à jour Safari/Chrome.");
+      }
+    }
+
+    function closeDialog() {
+      if (els.dialog.open) els.dialog.close();
+    }
+
+    function changeMonth(delta) {
+      state.currentMonth = new Date(state.currentMonth.getFullYear(), state.currentMonth.getMonth() + delta, 1);
+      render();
+      loadStays();
+    }
+
+    function staysForDate(iso) {
+      return state.stays
+        .filter(stay => stay.start_date <= iso && stay.end_date >= iso)
+        .sort((a, b) => a.person_name.localeCompare(b.person_name, "fr"));
+    }
+
+    function getCalendarCells(monthDate) {
+      const first = startOfMonth(monthDate);
+      const mondayOffset = (first.getDay() + 6) % 7;
+      const firstCell = addDays(first, -mondayOffset);
+      return Array.from({ length: 42 }, (_, index) => addDays(firstCell, index));
+    }
+
+    function startOfMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+
+    function endOfMonth(date) {
+      return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+
+    function addDays(date, days) {
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+    }
+
+    function parseLocalDate(iso) {
+      const [year, month, day] = iso.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function toISODate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatFullDate(date) {
+      return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date);
+    }
+
+    function formatShortDate(iso) {
+      return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(parseLocalDate(iso));
+    }
+
+    function formatDateRange(startIso, endIso) {
+      if (startIso === endIso) return formatShortDate(startIso);
+      return `${formatShortDate(startIso)} → ${formatShortDate(endIso)}`;
+    }
+
+    function setStatus(message) {
+      els.status.textContent = message;
+    }
+
+    let toastTimer = null;
+    function toast(message) {
+      els.toast.textContent = message;
+      els.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => els.toast.classList.remove("show"), 3200);
+    }
+
+    function pickNextColor() {
+      const colors = ["#205c4f", "#8a4f7d", "#b45309", "#2563eb", "#7c3aed", "#be123c", "#0f766e", "#4d7c0f"];
+      return colors[state.stays.length % colors.length];
+    }
+  </script>
+</body>
+</html>
