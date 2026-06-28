@@ -1,49 +1,62 @@
-# Calendrier de Sorge
+# Calendrier de Sorge — V3
 
-Application familiale simple en HTML/JavaScript + Supabase, pensée pour :
+Petite application HTML/JS + Supabase pour indiquer les jours où les enfants et petits-enfants sont à Sorge pour Jean-Luc.
 
-- une **vue planning très lisible** pour Jean-Luc ;
-- une **saisie rapide** pour les enfants et petits-enfants ;
-- un déploiement direct sur **GitHub Pages**.
+## Nouveauté V3
 
-## Nouveautés UX
+La configuration Supabase est maintenant isolée dans `config.js`.
 
-- Deux onglets :
-  - **Planning** : vue mensuelle compacte, en carrés/semaine, avec des barres horizontales qui traversent les jours où chaque personne est présente.
-  - **Saisie & modifications** : formulaire compact + liste des présences du mois.
-- Boutons moins gros.
-- Moins de scroll vertical.
-- La vue principale donne la vision d’ensemble du mois.
-- Cliquer sur une barre dans le planning ouvre directement la modification de la présence.
+Objectif : tu peux mettre à jour l’application en remplaçant `index.html` sans écraser la connexion à la base.
+
+## Fichiers
+
+```txt
+index.html          Application
+config.js           Paramètres Supabase à garder précieusement
+config.sample.js    Exemple de configuration
+supabase.sql        Script de création de la table et des politiques RLS
+README.md           Notice
+```
 
 ## Installation Supabase
 
-1. Crée un projet Supabase.
-2. Va dans **SQL Editor**.
-3. Colle et exécute le contenu du fichier `supabase.sql`.
-4. Va dans **Project Settings > Data API**.
-5. Copie :
-   - l'URL du projet ;
-   - la clé publique / anon / publishable key.
-6. Dans `index.html`, remplace :
+1. Créer un projet Supabase.
+2. Ouvrir **SQL Editor**.
+3. Coller et exécuter le contenu de `supabase.sql`.
+4. Aller dans **Project Settings > Data API**.
+5. Copier :
+   - l’URL du projet ;
+   - la clé publique `anon` / `publishable`.
+6. Modifier uniquement `config.js` :
 
 ```js
-const SUPABASE_URL = "https://TON-PROJET.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "TON_ANON_OU_PUBLISHABLE_KEY";
+window.APP_CONFIG = {
+  SUPABASE_URL: "https://ton-projet.supabase.co",
+  SUPABASE_PUBLISHABLE_KEY: "ta-cle-publique",
+  TABLE_NAME: "sorge_presences"
+};
 ```
 
 ## Déploiement GitHub Pages
 
-1. Crée un repo GitHub, par exemple `calendrier-sorge`.
-2. Ajoute `index.html` à la racine du repo.
-3. Dans GitHub : **Settings > Pages**.
-4. Source : `Deploy from a branch`.
-5. Branch : `main` / folder `/root`.
-6. Partage le lien GitHub Pages à la famille.
+1. Créer un repo GitHub.
+2. Ajouter `index.html`, `config.js`, `supabase.sql`, `README.md`.
+3. Aller dans **Settings > Pages**.
+4. Choisir **Deploy from branch** puis la branche `main`.
+5. Ouvrir l’URL GitHub Pages générée.
+
+## Mise à jour future sans casser Supabase
+
+Quand je te fournis une nouvelle version :
+
+- remplace `index.html` ;
+- remplace éventuellement `README.md` ;
+- ne remplace pas `config.js` si tes vrais identifiants Supabase sont déjà dedans.
+
+`config.sample.js` sert seulement d’exemple.
 
 ## Sécurité
 
-Cette version est volontairement sans compte utilisateur pour rester très simple.
-Conséquence : toute personne qui a le lien peut lire, ajouter, modifier et supprimer les présences.
+Cette application est volontairement sans login. Toute personne ayant le lien peut lire, ajouter, modifier et supprimer les présences.
 
-Pour une version plus protégée, il faudra ajouter une authentification Supabase ou une règle côté serveur.
+La clé Supabase utilisée côté navigateur est une clé publique. La vraie protection vient des politiques RLS dans `supabase.sql`. Pour un usage familial avec lien partagé, c’est volontairement simple.

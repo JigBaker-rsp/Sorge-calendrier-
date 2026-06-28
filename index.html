@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Calendrier de Sorge</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
   <style>
     :root {
       --bg: #f6f2e9;
@@ -508,7 +509,7 @@
     </header>
 
     <div id="configWarning" class="config-warning" hidden>
-      Configuration Supabase manquante : remplace SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY dans le fichier index.html.
+      Configuration Supabase manquante : renseigne SUPABASE_URL et SUPABASE_PUBLISHABLE_KEY dans le fichier config.js.
     </div>
 
     <nav class="tabs" aria-label="Sections de l’application">
@@ -604,11 +605,12 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
-    // 1) Remplace ces 2 valeurs par celles de ton projet Supabase.
-    // Supabase > Project Settings > Data API : URL + public/anon/publishable key.
-    const SUPABASE_URL = "https://TON-PROJET.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "TON_ANON_OU_PUBLISHABLE_KEY";
-    const TABLE_NAME = "sorge_presences";
+    // La configuration Supabase est isolée dans config.js.
+    // Ainsi, les futures mises à jour de index.html n’écrasent pas la connexion à la base.
+    const APP_CONFIG = window.APP_CONFIG || {};
+    const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || "";
+    const SUPABASE_PUBLISHABLE_KEY = APP_CONFIG.SUPABASE_PUBLISHABLE_KEY || APP_CONFIG.SUPABASE_KEY || "";
+    const TABLE_NAME = APP_CONFIG.TABLE_NAME || APP_CONFIG.TABLE || "sorge_presences";
 
     const state = {
       currentMonth: startOfMonth(new Date()),
@@ -650,7 +652,7 @@
       resetForm(toISODate(new Date()));
       render();
 
-      const isConfigured = !SUPABASE_URL.includes("TON-PROJET") && !SUPABASE_PUBLISHABLE_KEY.includes("TON_ANON");
+      const isConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY && !SUPABASE_URL.includes("TON-PROJET") && !SUPABASE_PUBLISHABLE_KEY.includes("TON_ANON"));
       els.configWarning.hidden = isConfigured;
 
       if (!isConfigured) {
